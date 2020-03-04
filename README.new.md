@@ -93,6 +93,26 @@ Checking virtual versions in: deps.edn
    cider/piggieback {:mvn/version "0.4.1-SNAPSHOT"} -> {:mvn/version "0.4.1-20190222.154954-1"}
 ```
 
+### Non-zero exit code
+
+By default Depot exits with the [exit code][exit-code] `0` (which, by convention, denotes success) whether or not it finds any old/outdated dependencies.
+To have Depot exit with a non-zero exit code when it does find such dependencies, include the `--fail` flag.
+Depot will then set its exit code to the number of old/outdated dependencies.
+
+This can be useful when running Depot as part of a script or in some automated context, such as a [Continuous Delivery][continuous-delivery] pipeline, workflow, or job.
+
+For example:
+
+```bash
+$ clojure -Aoutdated --fail
+Checking for old versions in: deps.edn
+  olical/depot {:mvn/version "..."} -> {:mvn/version "..."}
+  eastwood {:sha "..."} -> {:sha "..."}
+$ echo $?
+2
+```
+
+
 ## Existing work
 
 This project is inspired by [lein-ancient][], it relies on [version-clj][] (by the same author, [xsc][]) for parsing and comparison of version numbers.
@@ -117,6 +137,8 @@ Find the full [unlicense][] in the `UNLICENSE` file, but here's a snippet.
 
 Do what you want. Learn as much as you can. Unlicense more software.
 
+[continuous-delivery]: https://en.wikipedia.org/wiki/Continuous_delivery
+[exit-code]: https://en.wikipedia.org/wiki/Exit_code
 [unlicense]: http://unlicense.org/
 [lein-ancient]: https://github.com/xsc/lein-ancient
 [version-clj]: https://github.com/xsc/version-clj

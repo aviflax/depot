@@ -26,6 +26,9 @@
    ["-e" "--every" "Expand search to all aliases."]
    ["-w" "--write" "Instead of just printing changes, write them back to the file."]
    ["-r" "--resolve-virtual" "Convert -SNAPSHOT/RELEASE/LATEST versions into immutable references."]
+   ;; Not assigning -f to the following option because -f is an extremely common shorthand for a
+   ;; --force option and I don’t want to risk anyone getting confused.
+   [nil  "--fail" "If any old versions are found, exits with a non-zero status code."]
    ["-h" "--help"]])
 
 (def ^:private messages
@@ -37,7 +40,7 @@
                 :no-changes "  All up to date!"}})
 
 (defn -main [& args]
-  (let [{{:keys [aliases consider-types every help write resolve-virtual]} :options
+  (let [{{:keys [aliases consider-types every fail help write resolve-virtual]} :options
          files :arguments
          summary :summary} (cli/parse-opts args cli-options)]
     (cond
@@ -55,10 +58,12 @@
                        (:update-old messages))
             new-versions (if resolve-virtual
                            resolve-virtual/pinned-versions
-                           depot/newer-versions)]
+                           depot/newer-versions)
+            exit-code (if fail (count new-versions) 0)]
         (when (and every aliases)
           (println "--every and --aliases are mutually exclusive.")
           (System/exit 1))
         (run! #(update/apply-new-versions % consider-types check-alias? write messages new-versions)
-              files)))
+              files)
+        (System/exit exit-code)))
     (shutdown-agents)))
