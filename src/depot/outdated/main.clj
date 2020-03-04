@@ -39,16 +39,23 @@
                 :start-write "Updating old versions in: %s"
                 :no-changes "  All up to date!"}})
 
+(defn exit-with [exit-code & vs]
+  (when vs (apply println vs))
+  (System/exit exit-code))
+
 (defn -main [& args]
   (let [{{:keys [aliases consider-types every fail help write resolve-virtual]} :options
          files :arguments
-         summary :summary} (cli/parse-opts args cli-options)]
+         summary :summary} (cli/parse-opts args cli-options)
+         usage (str "USAGE: clojure -m depot.outdated.main [OPTIONS] [FILES]\n\n"
+                    " If no files are given, defaults to using \"deps.edn\".\n\n"
+                    summary)]
     (cond
       help
-      (do
-        (println "USAGE: clojure -m depot.outdated.main [OPTIONS] [FILES]\n")
-        (println " If no files are given, defaults to using \"deps.edn\".\n")
-        (println summary))
+      (exit-with 0 usage)
+
+      (and every aliases)
+      (exit-with 1 usage "\n\nERROR: --every and --aliases are mutually exclusive.")
 
       :else
       (let [files (if (seq files) files ["deps.edn"])
@@ -60,10 +67,12 @@
                            resolve-virtual/pinned-versions
                            depot/newer-versions)
             exit-code (if fail (count new-versions) 0)]
-        (when (and every aliases)
-          (println "--every and --aliases are mutually exclusive.")
-          (System/exit 1))
         (run! #(update/apply-new-versions % consider-types check-alias? write messages new-versions)
               files)
-        (System/exit exit-code)))
-    (shutdown-agents)))
+        (exit-with exit-code))))
+  ;; There might be some background agents running, so we call System/exit here to exit immediately;
+  ;; if we were to simply let this function exit then the program might seem to hang for a minute or
+  ;; so before it exits. We could have used shutdown-agents to account for this (in fact, we used
+  ;; to) but we realized that System/exit is a clearer, more explicit way to indicate that we want
+  ;; the program to exit immediately at this point.
+  (exit-with 0))
